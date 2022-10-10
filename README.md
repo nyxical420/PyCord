@@ -5,7 +5,9 @@ A Discord Chat Only Client made in Python.
 > PyCord will only work to Modern Consoles like Windows Terminal and other. since the Textual Library bugs out on Classic Consoles.\
 > PyCord also needs Message and Members Intent to work properly.
 
-## Setup
+## PyCord Features
+
+## PyCord Setup
 This is a Step-by-step on how to Configure PyCord or your Discord Bot and learning how to run PyCord.
 
 ### 1: Creating a Discord Bot
