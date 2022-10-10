@@ -6,7 +6,7 @@ A Discord Chat Only Client made in Python.
 > PyCord also needs Message and Members Intent to work properly.
 
 ## Setup
-This is a Step by Step setup on how to get PyCord working.
+This is a Step-by-step on how to Configure PyCord or your Discord Bot and learning how to run PyCord.
 
 ### 1: Creating a Discord Bot
 PyCord uses a Discord Bot to act as a User Account. to create a Discord Bot, you will need to visit the [Discord Developer Portal](https://discord.com/developers/applications) and create a **New Application** and give your Bot a Name!\
