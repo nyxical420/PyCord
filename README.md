@@ -1,5 +1,5 @@
 # PyCord
-A chat only Discord Client made in Python.
+A Discord Chat Only Client made in Python.
 
 > :warning: Warning\
 > PyCord will only work to Modern Consoles like Windows Terminal and other. since the Textual Library bugs out on Classic Consoles.\
@@ -33,4 +33,12 @@ To edit our .env file, You will need to Press `Win+R` and type in `notepad.exe` 
 Now that we opened the Notepad Program, drag the .env file inside the Notepad Window and paste our Discord Bot's Token next to the `token` Value then Save.\
 ![image](https://user-images.githubusercontent.com/53323309/194806065-e8f5f6cb-e6ca-4202-add0-63273221ca5c.png)
 
-You can now run PyCord!
+### 3: Running PyCord on Windows Terminal
+Now that we have everything set, we will now need to run PyCord on a Fancy Terminal so we don't run into problems while using PyCord (on a non-fancy terminal).
+In this step, you will need to install [Windows Terminal](https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701) on the Microsoft App Store.\
+![image](https://user-images.githubusercontent.com/53323309/194806617-0584c4ac-e91f-4f20-bc60-cd72ede40689.png)
+
+After installation is done, we can Run Windows Terminal by opening the folder that contains the PyCord Executable and pressing **Open In Terminal**\
+![image](https://user-images.githubusercontent.com/53323309/194806978-5ece13d9-aa8a-4311-963d-90d7584e10e5.png)
+
+Now that we opened Windows Terminal, run `.\PyCord` inside the terminal to start PyCord!
