@@ -2,7 +2,7 @@
 A Discord Chat Only Client made in Python.
 
 > :book: Note to Users\
-> PyCord will have a FULL REWRITE since the TUI Libarary called Textual doesn't work on classic terminals.\
+> PyCord will have a FULL REWRITE since the TUI Libarary called Textual doesn't work on classic terminals. (and im having issues with it using linux.)\
 > Please wait until a new PyCord Version is released. as it may take a while creating my own TUI Library specially for PyCord. *the TUI library will use rich to keep the emojis on messages.*
 
 > :warning: Warning\
