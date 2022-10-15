@@ -1,4 +1,3 @@
-## PyCord Setup (Windows)
 This is a Step-by-step tutorial on how to start running PyCord in your Windows Computer!
 
 ### 1: Creating a Discord Bot
