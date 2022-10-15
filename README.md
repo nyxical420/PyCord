@@ -6,8 +6,8 @@ A Discord Chat Only Client made in Python.
 
 ## PyCord Features
 
-## PyCord Setup
-This is a Step-by-step on how to Configure PyCord or your Discord Bot and learning how to run PyCord.
+## PyCord Setup (Windows)
+This is a Step-by-step on how to Configure PyCord or your Discord Bot and learning how to run PyCord on Windows.
 
 ### 1: Creating a Discord Bot
 PyCord uses a Discord Bot to act as a User Account. to create a Discord Bot, you will need to visit the [Discord Developer Portal](https://discord.com/developers/applications) and create a **New Application** and give your Bot a Name!\
