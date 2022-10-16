@@ -1,4 +1,4 @@
-# <h1 align="center">PyCord</h1>
+<h1 align="center">PyCord</h1>
 A Discord Chat Only Client made in Python.
 
 > 🗒️ Note to Windows Users:\
