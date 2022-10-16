@@ -1,37 +1,51 @@
+# PyCord - A Chat Only Discord Client made in Python
+# PyCord is a third-party Discord Client and is not affiliated with Discord.
+#
+#
+# Github Repository: https://github.com/PyTsun/PyCord
+
+# PACKAGES
+# Python Packages that PyCord uses to run properly.
 import discord
 from discord.ext import commands
 
-import rich.box
 from textual.app import App
 from rich.panel import Panel
+from rich.box import ROUNDED
 from textual.widgets import Static
 from textual_inputs import TextInput
 
 from httpx import get
 from re import search
 from notifypy import Notify
-import urllib.request as url
 from threading import Thread
-from sys import exit as _exit
 from dotenv import load_dotenv
 from textwrap import TextWrapper
+from os import getenv, system, name
 from textual.reactive import Reactive
 from asyncio import sleep as aiosleep
-from os import getenv, remove, system, name
 from time import sleep, strftime, localtime
+
+# CONFIGURATION
+# Configuration that PyCord need to run and render things properly.
+boxType = ROUNDED
 load_dotenv(".env")
 
 serverList = []
 channelList = []
-
 serverIndex = 0
 channelIndex = 0
 serverFocus = ["unknownServer", 0]
 channelFocus = ["unknownChannel", 0]
 pyCordReady = False
 
+# CODE
 def clearTerminal():
     system('cls' if name == 'nt' else 'clear')
+
+async def replyMessage(id: int, content: str):
+    if pyCordReady != True: return
+    await bot.get_partial_messageable(channelFocus[1]).get_partial_message(id).reply(content=content)
 
 class PyCord(commands.Bot):
     messageQueue = []
@@ -58,11 +72,10 @@ class PyCord(commands.Bot):
         if len(self.typingQueue) >= 2:
             self.typingUsers = f"{self.typingQueue[0]}, {self.typingQueue[1]} and {len(self.typingQueue) - 2} more users is typing..."
 
-        try: await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", subtitle=f"{self.typingUsers}", subtitle_align="left", border_style="cyan", box=rich.box.ROUNDED))
+        try: await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", subtitle=f"{self.typingUsers}", subtitle_align="left", border_style="cyan", box=boxType))
         except NameError: pass
 
     async def on_ready(self):
-        global pyCordReady
         for guild in bot.guilds:
             serverList.append(guild.id)
         
@@ -74,9 +87,9 @@ class PyCord(commands.Bot):
                 channelList.append(channel.id)
 
                 if lookforGeneral == True:
-                    if "general" in channel.name:
+                    if channel.name.__contains__("general") or channel.name.__contains__("chat"):
                         global channelIndex
-                        channelIndex = len(channelList)
+                        channelIndex = len(channelList) - 1
                         channelFocus[0] = channel.name
                         channelFocus[1] = channel.id
                         lookforGeneral = False
@@ -90,37 +103,34 @@ class PyCord(commands.Bot):
         
         async def messageSender():
             while True:
-                if self.messageQueue != []:
-                    if not self.messageQueue[0] == "":
-                        try:
-                            await bot.get_channel(channelFocus[1]).send(self.messageQueue[0])
-                            self.messageQueue.pop(0)
-                        except:
-                            serverList.clear()
-                            channelList.clear()
-                            for guild in bot.guilds:
-                                serverList.append(guild.id)
-                            
-                            server = bot.get_guild(serverList[0])
+                while self.messageQueue == []:
+                    await aiosleep(.1)
 
-                            for channel in server.channels:
-                                if isinstance(channel, discord.TextChannel):
-                                    channelList.append(channel.id)
-
-                            serverFocus[0] = server.name
-                            serverFocus[1] = server.id
-                            channel = bot.get_channel(channelList[0])
-                            channelFocus[0] = channel.name
-                            channelFocus[1] = channel.id
-                            PyCordInterface.chatHistory.append("* [red]Error:[/red] Failed to send message to channel.")
-                            await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
-
-                    else:
+                if self.messageQueue[0] != "":
+                    try:
+                        await bot.get_partial_messageable(channelFocus[1]).send(self.messageQueue[0])
                         self.messageQueue.pop(0)
+                    except:
+                        serverList.clear()
+                        channelList.clear()
+                        for guild in bot.guilds:
+                            serverList.append(guild.id)
+
+                        server = bot.get_guild(serverList[0])
+                        for channel in server.channels:
+                            if isinstance(channel, discord.TextChannel):
+                                channelList.append(channel.id)
+                        serverFocus[0] = server.name
+                        serverFocus[1] = server.id
+                        channel = bot.get_channel(channelList[0])
+                        channelFocus[0] = channel.name
+                        channelFocus[1] = channel.id
+                        PyCordInterface.chatHistory.append("* [red]Error:[/red] Failed to send message to channel.")
+                        await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=boxType))
+                else:
+                    self.messageQueue.pop(0)
                 
-                await aiosleep(.1)
         
-        pyCordReady = True
         await bot.loop.create_task(messageSender())
 
     async def on_guild_join(self, guild: discord.Guild):
@@ -130,8 +140,8 @@ class PyCord(commands.Bot):
             serverList.append(guild.id)
 
         if len(PyCordInterface.chatHistory) >= chats.size.height - 3: PyCordInterface.chatHistory.pop(0)
-        PyCordInterface.chatHistory.append(f"* [blink]You have been added to [yellow]{guild.name}[/yellow]![/blink]")
-        await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+        PyCordInterface.chatHistory.append(f"* You have been added to [yellow]{guild.name}[/yellow]!")
+        await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=boxType))
 
     async def on_typing(self, channel: discord.TextChannel, user: discord.Member, when):
         if pyCordReady != True: return
@@ -155,13 +165,7 @@ class PyCord(commands.Bot):
         if reaction.message.author.id != bot.user.id: return
 
         PyCordInterface.chatHistory.append(f"[cyan]{user.display_name}[/cyan] reacted to your message with {reaction.emoji}")
-        await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
-
-    async def replyMessage(self, id: int, content: str):
-        if pyCordReady != True: return
-        channelMessagable = bot.get_partial_messageable(channelFocus[1])
-        message = channelMessagable.get_partial_message(id)
-        await message.reply(content=content)
+        await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=boxType))
 
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         if pyCordReady != True: return
@@ -198,11 +202,11 @@ class PyCord(commands.Bot):
                 
             PyCordInterface.chatHistory.append(f"{(messagesa[x])}")
 
-        await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
         
     async def on_message(self, message: discord.Message):
         if pyCordReady != True: return
-        msg = message.content
+        msg = message.content.replace("[", "\[")
         mid = message.id
         msgAuthor = message.author.display_name.encode("ascii", errors="ignore").decode()
 
@@ -214,15 +218,15 @@ class PyCord(commands.Bot):
                 if message.reference.resolved.attachments != []:
                     if message.reference.resolved.attachments != []:
                         if len(message.reference.resolved.attachments) == 1:
-                            replyContent += "[blink]Sent 1 attatchment.[/blink] "
+                            replyContent += "╰── [cyan]Sent 1 attatchment.[/cyan] "
                         else:
-                            replyContent += f"[blink]Sent {len(message.reference.resolved.attachments)} attatchments.[/blink] "
+                            replyContent += f"╰── [cyan]Sent {len(message.reference.resolved.attachments)} attatchments.[/cyan] "
 
                     if message.reference.resolved.embeds != []:
                         if len(message.reference.resolved.attachments) == 1:
-                            replyContent = "[blink]Sent 1 embed.[/blink]"
+                            replyContent = "╰── [cyan]Sent 1 embed.[/cyan]"
                         else:
-                            replyContent = f"[blink]Sent {len(message.reference.resolved.embeds)} embeds.[/blink]"
+                            replyContent = f"╰── [cyan]Sent {len(message.reference.resolved.embeds)} embeds.[/cyan]"
         except: pass
         
         try: self.typingQueue.remove(message.author.display_name)
@@ -318,7 +322,7 @@ class PyCord(commands.Bot):
         except: pass
 
         dateTime = strftime("%m/%d/%y %I:%M%p", localtime(message.created_at.timestamp()))
-        title = f"{color[0]}{msgAuthor}{color[1]}\t[blink]{dateTime}[/blink] {mid}".expandtabs((chats.size.width + color[2] - 15) - (len(str(mid)) + len(str(dateTime))))
+        title = f"{color[0]}{msgAuthor}{color[1]}\t[blue]{dateTime}[/blue] {mid}".expandtabs((chats.size.width + color[2] - 15) - (len(str(mid)) + len(str(dateTime))))
         w = TextWrapper(width=chats.size.width-4, break_long_words=True, replace_whitespace=True)
         if len(PyCordInterface.chatHistory) >= chats.size.height - 2: PyCordInterface.chatHistory.pop(0)
         
@@ -351,11 +355,11 @@ class PyCord(commands.Bot):
                 if len(PyCordInterface.chatHistory) >= chats.size.height - 2: PyCordInterface.chatHistory.pop(0)
 
                 if len(message.attachments) == 1:
-                    PyCordInterface.chatHistory.append(f"[blink]Sent 1 attatchment.[/blink]")
+                    PyCordInterface.chatHistory.append(f"╰── [cyan]Sent 1 attatchment.[/cyan]")
                 else:
-                    PyCordInterface.chatHistory.append(f"[blink]Sent {len(message.attachments)} attatchments.[/blink]")
+                    PyCordInterface.chatHistory.append(f"╰── [cyan]Sent {len(message.attachments)} attatchments.[/cyan]")
 
-            await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+            await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
 
         else:
             PyCordInterface.chatHistory.append(title)
@@ -363,31 +367,33 @@ class PyCord(commands.Bot):
                 if len(PyCordInterface.chatHistory) >= chats.size.height - 2: PyCordInterface.chatHistory.pop(0)
 
                 if len(message.attachments) == 1:
-                    PyCordInterface.chatHistory.append(f"[blink]Sent 1 attatchment.[/blink]")
+                    PyCordInterface.chatHistory.append(f"╰── [cyan]Sent 1 attatchment.[/cyan]")
                 else:
-                    PyCordInterface.chatHistory.append(f"[blink]Sent {len(message.attachments)} attatchments.[/blink]")
+                    PyCordInterface.chatHistory.append(f"╰── [cyan]Sent {len(message.attachments)} attatchments.[/cyan]")
 
             if message.embeds != []:
                 if len(PyCordInterface.chatHistory) >= chats.size.height - 2: PyCordInterface.chatHistory.pop(0)
 
                 if len(message.embeds) == 1:
-                    PyCordInterface.chatHistory.append(f"[blink]Sent 1 embed.[/blink]")
+                    PyCordInterface.chatHistory.append(f"╰── [cyan]Sent 1 embed.[/cyan]")
                 else:
-                    PyCordInterface.chatHistory.append(f"[blink]Sent {len(message.embeds)} embeds.[/blink]")
+                    PyCordInterface.chatHistory.append(f"╰── [cyan]Sent {len(message.embeds)} embeds.[/cyan]")
 
-            await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+            await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
         chats.refresh
 
 bot = PyCord()
     
 class PyCordInterface(App):
     token = getenv("token")
-    Thread(target=bot.run, kwargs={"token": token}).start()
+    try: Thread(target=bot.run, kwargs={"token": token}).start()
+    except KeyboardInterrupt: pass
 
     chatHistory = []
     
     async def on_load(self) -> None:
-        await self.bind("esc", "quit", "Quit")
+        global pyCordReady
+        await self.bind("q", "quit", "Quit")
         await self.bind("enter", "submit", "Send Message")
         await self.bind("Z", "previousChannel", "Previous Channel")
         await self.bind("X", "nextChannel", "Next Channel")
@@ -395,14 +401,11 @@ class PyCordInterface(App):
         await self.bind("x", "nextServer", "Next Server")
         await self.bind("r", "refresh", "Clear Messages")
         await self.bind("a", "toggleTopic", "Toggle Channel Topic")
-
-        while pyCordReady != True: 
-            sleep(.01)
         
         clearTerminal()
         print("* Checking for PyCord Updates...")
         api = get("https://api.github.com/repos/PyTsun/PyCord/releases/latest").json()
-        if api["tag_name"] != "v1.3":
+        if api["tag_name"] != "v1.4":
             tag = api["tag_name"]
             title = api["name"]
             info = api["body"]
@@ -410,20 +413,31 @@ class PyCordInterface(App):
             print(f"[{tag}] {title}\n{info}")
             print( "\n* Visit https://github.com/PyTsun/PyCord/releases to download update!")
         
-        await aiosleep(5)
+            await aiosleep(5)
+        
+        print("* Checking Server List...")
+        if len(bot.guilds) == 0:
+            print(" Your Discord Bot is Currently on 0 Guilds. Please invite your bot to a Discord Server to continue!")
+            while bot.guilds.count == 0:
+                await aiosleep(1)
+        print(f"* Currently on {str(len(bot.guilds))} servers")
+    
+        await aiosleep(1.5)
+        pyCordReady = True
 
     async def displayHistory(self):
-        focusChannel = channelFocus[1]
-        await chats.update(Panel("", title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", subtitle="Retrieving Chat History...", subtitle_align="center", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("", title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", subtitle="Loading...", subtitle_align="left", border_style="cyan", box=boxType))
+        lastChannel = channelFocus[1]
         await aiosleep(1)
+        if lastChannel != channelFocus[1]: return
+        await chats.update(Panel("", title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", subtitle="Retrieving Chat History...", subtitle_align="left", border_style="cyan", box=boxType))
         channel = bot.get_channel(channelFocus[1])
-        if channel.id != focusChannel: return
 
         messages = [message async for message in channel.history(limit=24)]
         messages.reverse()
 
         for message in messages:
-            msg = message.content
+            msg = message.content.replace("[", "\[")
             mid = message.id
             msgAuthor = message.author.display_name.encode("ascii", errors="ignore").decode()
             
@@ -438,15 +452,15 @@ class PyCordInterface(App):
                     if message.reference.resolved.attachments != []:
                         if message.reference.resolved.attachments != []:
                             if len(message.reference.resolved.attachments) == 1:
-                                replyContent += "[blink]Sent 1 attatchment.[/blink] "
+                                replyContent += "╰── [cyan]Sent 1 attatchment.[/cyan] "
                             else:
-                                replyContent += f"[blink]Sent {len(message.reference.resolved.attachments)} attatchments.[/blink] "
+                                replyContent += f"╰── [cyan]Sent {len(message.reference.resolved.attachments)} attatchments.[/cyan] "
 
                         if message.reference.resolved.embeds != []:
                             if len(message.reference.resolved.attachments) == 1:
-                                replyContent = "[blink]Sent 1 embed.[/blink]"
+                                replyContent = "╰── [cyan]Sent 1 embed.[/cyan]"
                             else:
-                                replyContent = f"[blink]Sent {len(message.reference.resolved.embeds)} embeds.[/blink]"
+                                replyContent = f"╰── [cyan]Sent {len(message.reference.resolved.embeds)} embeds.[/cyan]"
             except: pass
 
             try: PyCord.typingQueue.remove(message.author.display_name)
@@ -539,7 +553,7 @@ class PyCordInterface(App):
             except: pass
 
             dateTime = strftime("%m/%d/%y %I:%M%p", localtime(message.created_at.timestamp()))
-            title = f"{color[0]}{msgAuthor}{color[1]}\t[blink]{dateTime}[/blink] {mid}".expandtabs((chats.size.width + color[2] - 15) - (len(str(mid)) + len(str(dateTime))))
+            title = f"{color[0]}{msgAuthor}{color[1]}\t[blue]{dateTime}[/blue] {mid}".expandtabs((chats.size.width + color[2] - 15) - (len(str(mid)) + len(str(dateTime))))
             w = TextWrapper(width=chats.size.width-12, break_long_words=True, replace_whitespace=True)
             if len(PyCordInterface.chatHistory) >= chats.size.height - 2: PyCordInterface.chatHistory.pop(0)
 
@@ -572,11 +586,11 @@ class PyCordInterface(App):
                     if len(PyCordInterface.chatHistory) >= chats.size.height - 2: PyCordInterface.chatHistory.pop(0)
 
                     if len(message.attachments) == 1:
-                        PyCordInterface.chatHistory.append(f"[blink]Sent 1 attatchment.[/blink]")
+                        PyCordInterface.chatHistory.append(f"╰── [cyan]Sent 1 attatchment.[/cyan]")
                     else:
-                        PyCordInterface.chatHistory.append(f"[blink]Sent {len(message.attachments)} attatchments.[/blink]")
+                        PyCordInterface.chatHistory.append(f"╰── [cyan]Sent {len(message.attachments)} attatchments.[/cyan]")
 
-                await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", subtitle="Retrieving Chat History...", subtitle_align="center", border_style="cyan", box=rich.box.ROUNDED))
+                await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", subtitle="Retrieving Chat History...", subtitle_align="left", border_style="cyan", box=boxType))
 
             else:
                 PyCordInterface.chatHistory.append(title)
@@ -584,25 +598,26 @@ class PyCordInterface(App):
                     if len(PyCordInterface.chatHistory) >= chats.size.height - 2: PyCordInterface.chatHistory.pop(0)
 
                     if len(message.attachments) == 1:
-                        PyCordInterface.chatHistory.append(f"[blink]Sent 1 attatchment.[/blink]")
+                        PyCordInterface.chatHistory.append(f"╰── [cyan]Sent 1 attatchment.[/cyan]")
                     else:
-                        PyCordInterface.chatHistory.append(f"[blink]Sent {len(message.attachments)} attatchments.[/blink]")
+                        PyCordInterface.chatHistory.append(f"╰── [cyan]Sent {len(message.attachments)} attatchments.[/cyan]")
 
                 if message.embeds != []:
                     if len(PyCordInterface.chatHistory) >= chats.size.height - 2: PyCordInterface.chatHistory.pop(0)
 
                     if len(message.embeds) == 1:
-                        PyCordInterface.chatHistory.append(f"[blink]Sent 1 embed.[/blink]")
+                        PyCordInterface.chatHistory.append(f"╰── [cyan]Sent 1 embed.[/cyan]")
                     else:
-                        PyCordInterface.chatHistory.append(f"[blink]Sent {len(message.embeds)} embeds.[/blink]")
+                        PyCordInterface.chatHistory.append(f"╰── [cyan]Sent {len(message.embeds)} embeds.[/cyan]")
 
-                await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", subtitle="Retrieving Chat History...", subtitle_align="center", border_style="cyan", box=rich.box.ROUNDED))
+                await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", subtitle="Retrieving Chat History...", subtitle_align="left", border_style="cyan", box=boxType))
         chats.refresh
-        await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
 
     async def action_previousServer(self):
         global serverIndex
-
+        
+        if serverIndex - 1 == -1: return
         if not serverIndex - 1 == -1:
             serverIndex -= 1
 
@@ -620,9 +635,9 @@ class PyCordInterface(App):
                         channelList.append(channel.id)
 
                         if lookforGeneral == True:
-                            if "general" in channel.name:
+                            if channel.name.__contains__("general") or channel.name.__contains__("chat"):
                                 global channelIndex
-                                channelIndex = len(channelList)
+                                channelIndex = len(channelList) - 1
                                 channelFocus[0] = channel.name
                                 channelFocus[1] = channel.id
                                 lookforGeneral = False
@@ -637,11 +652,12 @@ class PyCordInterface(App):
         self.chatHistory.clear()
         bot.loop.create_task(self.displayHistory())
         if len(self.chatHistory) >= chats.size.height - 2: self.chatHistory.pop(0)
-        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
 
     async def action_nextServer(self):
         global serverIndex
-
+        
+        if serverIndex >= len(serverList) - 1: return
         if not serverIndex >= len(serverList) - 1:
             serverIndex += 1
 
@@ -658,9 +674,9 @@ class PyCordInterface(App):
                         channelList.append(channel.id)
 
                         if lookforGeneral == True:
-                            if "general" in channel.name:
+                            if channel.name.__contains__("general") or channel.name.__contains__("chat"):
                                 global channelIndex
-                                channelIndex = len(channelList)
+                                channelIndex = len(channelList) - 1
                                 channelFocus[0] = channel.name
                                 channelFocus[1] = channel.id
                                 lookforGeneral = False
@@ -674,11 +690,12 @@ class PyCordInterface(App):
         self.chatHistory.clear()
         bot.loop.create_task(self.displayHistory())
         if len(self.chatHistory) >= chats.size.height - 2: self.chatHistory.pop(0)
-        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
 
     async def action_previousChannel(self):
         global channelIndex
 
+        if channelIndex - 1 == - 1: return
         if not channelIndex - 1 == - 1:
             channelIndex -= 1
             
@@ -691,11 +708,12 @@ class PyCordInterface(App):
         self.chatHistory.clear()
         bot.loop.create_task(self.displayHistory())
         if len(self.chatHistory) >= chats.size.height - 2: self.chatHistory.pop(0)
-        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
         
     async def action_nextChannel(self):
         global channelIndex
 
+        if channelIndex >= len(channelList) - 1: return
         if not channelIndex >= len(channelList) - 1:
             channelIndex += 1
 
@@ -708,12 +726,12 @@ class PyCordInterface(App):
         self.chatHistory.clear()
         bot.loop.create_task(self.displayHistory())
         if len(self.chatHistory) >= chats.size.height - 2: self.chatHistory.pop(0)
-        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
 
     async def action_refresh(self):
         self.chatHistory.clear()
         bot.loop.create_task(self.displayHistory())
-        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
     
     async def action_submit(self):
         if chatBox.value.startswith("/reply"):
@@ -724,7 +742,7 @@ class PyCordInterface(App):
             content = " ".join(args)
             chatBox._cursor_position = 0
             chatBox.value = ""
-            return bot.loop.create_task(PyCord.replyMessage(PyCord, id, content))
+            return replyMessage(id, content)
 
         if chatBox.value.startswith("/leave"):
             try:
@@ -740,9 +758,9 @@ class PyCordInterface(App):
                         channelList.append(channel.id)
 
                         if lookforGeneral == True:
-                            if "general" in channel.name:
+                            if channel.name.__contains__("general") or channel.name.__contains__("chat"):
                                 global channelIndex
-                                channelIndex = len(channelList)
+                                channelIndex = len(channelList) - 1
                                 channelFocus[0] = channel.name
                                 channelFocus[1] = channel.id
                                 lookforGeneral = False
@@ -756,12 +774,12 @@ class PyCordInterface(App):
             chatBox._cursor_position = 0
             chatBox.value = ""
             return bot.loop.create_task(bot.get_guild(serverFocus[1]).leave())
-
+        
         PyCord.messageQueue.append(chatBox.value)
-        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
         chatBox._cursor_position = 0
         chatBox.value = ""
-
+        
     show_bar = Reactive(False)
     def watch_show_bar(self, show_bar: bool) -> None:
         chInfo.animate("layout_offset_x", 0 if show_bar else -40)
@@ -777,21 +795,18 @@ class PyCordInterface(App):
         global chats
 
         chatBox = TextInput()
-        chInfo = Static(renderable=Panel("", title="Channel Info", border_style="cyan", box=rich.box.ROUNDED))
-        chats = Static(renderable=Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]}", border_style="cyan", box=rich.box.ROUNDED))
+        chInfo = Static(renderable=Panel("", title="Channel Info", border_style="cyan", box=boxType))
+        chats = Static(renderable=Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]}", border_style="cyan", box=boxType))
         
         self.set_interval(.2, chats.refresh)
         await self.view.dock(chatBox, edge="bottom", size=3)
         await self.view.dock(chats, edge="top", size=500)
         await self.view.dock(chInfo, edge="left", size=40, z=1)
-        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", border_style="cyan", box=rich.box.ROUNDED))
-        await chInfo.update(Panel("z         - Go to Previous Channel\nx         - Go to Next     Channel\nshift + z - Go to Previous Server\nshift + x - Go to Next     Server\nr         - Reset Chat Logs\n\nPyCord Slash Commands\n/reply <message_id> <message>\n/leave", title=f"PyCord Controls", border_style="cyan", box=rich.box.ROUNDED))
+        await chats.update(Panel("\n".join(self.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]} | 👥 {bot.get_guild(serverFocus[1]).member_count:,} Members", title_align="left", border_style="cyan", box=boxType))
+        await chInfo.update(Panel("z         - Go to Previous Channel\nx         - Go to Next     Channel\nshift + z - Go to Previous Server\nshift + x - Go to Next     Server\nr         - Reset Chat Logs\n\nPyCord Slash Commands\n/reply <message_id> <message>\n/leave", title=f"PyCord Controls", border_style="cyan", box=boxType))
         chInfo.layout_offset_x = -40
         bot.loop.create_task(self.displayHistory())
         self.chatHistory.clear()
 
 
-try:
-    PyCordInterface.run()
-except KeyboardInterrupt:
-    _exit()
+PyCordInterface.run()
