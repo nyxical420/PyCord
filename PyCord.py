@@ -9,6 +9,7 @@
 import discord
 from discord.ext import commands
 
+from rich import print
 from textual.app import App
 from rich.panel import Panel
 from rich.box import ROUNDED
@@ -17,7 +18,6 @@ from textual_inputs import TextInput
 
 from httpx import get
 from re import search
-from notifypy import Notify
 from threading import Thread
 from dotenv import load_dotenv
 from textwrap import TextWrapper
@@ -83,19 +83,26 @@ class PyCord(commands.Bot):
 
     async def on_ready(self):
         global pyCordReady
+
+        print("* Creating Guild List...")
         for guild in bot.guilds:
+            print(f" Added Guild \"{guild.name}\" ({guild.id}) to Guild List")
             serverList.append(guild.id)
         
         server = bot.get_guild(serverList[0])
 
+        print(f"* Getting Channel List from server \"{server.name}\"...")
         lookforGeneral = True
+        print("* Creating Channel List...")
         for channel in server.channels:
             if isinstance(channel, discord.TextChannel):
+                print(f" Added Channel \"{channel.name}\" ({channel.id}) to Channel List")
                 channelList.append(channel.id)
 
                 if lookforGeneral == True:
                     if channel.name.__contains__("general") or channel.name.__contains__("chat"):
                         global channelIndex
+                        print(f" Set Channel to \"{channel.name}\" as general.")
                         channelIndex = len(channelList) - 1
                         channelFocus[0] = channel.name
                         channelFocus[1] = channel.id
@@ -108,8 +115,7 @@ class PyCord(commands.Bot):
             channel = bot.get_channel(channelList[0])
             channelFocus[0] = channel.name
             channelFocus[1] = channel.id
-        print(channelFocus[0])
-        r = True
+
         server = bot.get_guild(server.id)
 
         async def messageSender():
@@ -147,7 +153,7 @@ class PyCord(commands.Bot):
                         channel = bot.get_channel(channelList[0])
                         channelFocus[0] = channel.name
                         channelFocus[1] = channel.id
-                        PyCordInterface.chatHistory.append("* [red]Error:[/red] Failed to send message to channel.")
+                        PyCordInterface.chatHistory.append("[red] Failed to send message to channel.[/red]")
                         await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]}", border_style=history, box=boxType))
                 else:
                     self.messageQueue.pop(0)
@@ -162,7 +168,7 @@ class PyCord(commands.Bot):
             serverList.append(guild.id)
 
         if len(PyCordInterface.chatHistory) >= chats.size.height - 3: PyCordInterface.chatHistory.pop(0)
-        PyCordInterface.chatHistory.append(f"* You have been added to [yellow]{guild.name}[/yellow]!")
+        PyCordInterface.chatHistory.append(f"You have been added to [yellow]{guild.name}[/yellow]!")
         await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]}", border_style=history, box=boxType))
 
     async def on_typing(self, channel: discord.TextChannel, user: discord.Member, when):
@@ -186,7 +192,13 @@ class PyCord(commands.Bot):
         if reaction.message.channel.id != channelFocus[1]: return
         if reaction.message.author.id != bot.user.id: return
 
-        PyCordInterface.chatHistory.append(f"[cyan]{user.display_name}[/cyan] reacted to your message with {reaction.emoji}")
+        if user.bot:
+            authorColor = ["[blue]", "[/blue]", 23]
+        else:
+            authorColor = rgb_to_hex(user.color.to_rgb())
+            authorColor = [f"[{authorColor}]", f"[/{authorColor}]", int((len(authorColor) * 4) + 1)]
+
+        PyCordInterface.chatHistory.append(f"[{authorColor}]{user.display_name}[/{authorColor}] reacted to your message with {reaction.emoji}")
         await chats.update(Panel("\n".join(PyCordInterface.chatHistory), title=f"{serverFocus[0]} | #{channelFocus[0]}", border_style=history, box=boxType))
 
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
@@ -196,12 +208,12 @@ class PyCord(commands.Bot):
         if before.channel.id != channelFocus[1]: return
 
         if before.author.bot:
-            color = ["[blue]", "[/blue]", 23]
+            authorColor = ["[blue]", "[/blue]", 23]
         else:
-            color = rgb_to_hex(before.author.color.to_rgb())
-            color = [f"[{color}]", f"[/{color}]", (len(color) * 4) + 1]
+            authorColor = rgb_to_hex(before.author.color.to_rgb())
+            authorColor = [f"[{authorColor}]", f"[/{authorColor}]", int((len(authorColor) * 4) + 1)]
 
-        title = f"{color[0]}{msgAuthor}{color[1]}"
+        title = f"{authorColor[0]}{msgAuthor}{authorColor[1]}"
         w = TextWrapper(width=chats.size.width-4, break_long_words=True, replace_whitespace=True)
         messagesb = [w.fill(p) for p in before.content.splitlines()]
         messagesa = [w.fill(p) for p in after.content.splitlines()]
@@ -253,14 +265,6 @@ class PyCord(commands.Bot):
         except: pass
         await self.updateTyping()
 
-        try: # notify user
-            if message.guild.id != serverFocus[1] and message.content.__contains__(f"<@{bot.user.id}>"):
-                notif = Notify()
-                notif.title = f"{message.author.name} on {message.guild.name} (#{message.channel.name})"
-                notif.message = message.content.replace(f"<@{bot.user.id}>", f"@{bot.user.name}")
-                notif.send()
-        except AttributeError: pass
-
         if message.guild.id != serverFocus[1]: return
         if message.channel.id != channelFocus[1]: return
 
@@ -282,13 +286,13 @@ class PyCord(commands.Bot):
             if word.__contains__("#"): # Channel
                 try:
                     channelId = search("<#(.*?)>", word).group(1)
-                    msg = msg.replace(f"<#{channelId}>", f"[black on #5865F2]#{bot.get_guild(serverFocus[1]).get_channel(int(channelId)).name}[/black on #5865F2]")
+                    msg = msg.replace(f"<#{channelId}>", f"[black on {history}]#{bot.get_guild(serverFocus[1]).get_channel(int(channelId)).name}[/black on {history}]")
                 except AttributeError: pass
 
             if word.__contains__("@&"): # Role
                 try:
                     roleId = search("<@&(.*?)>", word).group(1)
-                    roleColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_member(int(roleId)).color.to_rgb())
+                    roleColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_role(int(roleId)).color.to_rgb())
                     msg = msg.replace(f"<@&{roleId}>", f"[black on {roleColor}]@{bot.get_guild(serverFocus[1]).get_role(int(roleId)).name}[/black on {roleColor}]")
                 except AttributeError: pass
 
@@ -296,8 +300,7 @@ class PyCord(commands.Bot):
                 try:
                     userId = search("<@!(.*?)>", word).group(1)
                     userId = userId.replace("&", "")
-                    userColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_member(int(userId)).color.to_rgb())
-                    msg = msg.replace(f"<@!{userId}>", f"[black on {userColor}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {userColor}]")
+                    msg = msg.replace(f"<@!{userId}>", f"[black on {history}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {history}]")
                 except AttributeError: pass
 
             if word.__contains__("@"): # User
@@ -305,8 +308,7 @@ class PyCord(commands.Bot):
                     userId = search("<@(.*?)>", word).group(1)
                     userId = userId.replace("&", "")
                     userId = userId.replace("!", "")
-                    userColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_member(int(userId)).color.to_rgb())
-                    msg = msg.replace(f"<@{userId}>", f"[black on {userColor}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {userColor}]")
+                    msg = msg.replace(f"<@{userId}>", f"[black on {history}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {history}]")
                 except AttributeError: pass
 
             if word.__contains__("***"):
@@ -338,7 +340,7 @@ class PyCord(commands.Bot):
                 if word.__contains__("#"): # Channel
                     try:
                         channelId = search("<#(.*?)>", word).group(1)
-                        replyContent = replyContent.replace(f"<#{channelId}>", f"[black on #5865F2]#{bot.get_guild(serverFocus[1]).get_channel(int(channelId)).name}[/black on #5865F2]")
+                        replyContent = replyContent.replace(f"<#{channelId}>", f"[black on {history}]#{bot.get_guild(serverFocus[1]).get_channel(int(channelId)).name}[/black on {history}]")
                     except AttributeError: pass
 
                 if word.__contains__("@&"): # Role
@@ -352,8 +354,7 @@ class PyCord(commands.Bot):
                     try:
                         userId = search("<@!(.*?)>", word).group(1)
                         userId = userId.replace("&", "")
-                        userColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_member(int(userId)).color.to_rgb())
-                        replyContent = replyContent.replace(f"<@!{userId}>", f"[black on {userColor}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {userColor}]")
+                        replyContent = replyContent.replace(f"<@!{userId}>", f"[black on {history}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {history}]")
                     except AttributeError: pass
 
                 if word.__contains__("@"): # User
@@ -361,8 +362,7 @@ class PyCord(commands.Bot):
                         userId = search("<@(.*?)>", word).group(1)
                         userId = userId.replace("&", "")
                         userId = userId.replace("!", "")
-                        userColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_member(int(userId)).color.to_rgb())
-                        replyContent = replyContent.replace(f"<@{userId}>", f"[black on {userColor}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {userColor}]")
+                        replyContent = replyContent.replace(f"<@{userId}>", f"[black on {history}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {history}]")
                     except AttributeError: pass
 
                 if word.__contains__("***"):
@@ -493,7 +493,6 @@ class PyCordInterface(App):
         await aiosleep(1.5)
         
     async def action_quit(self) -> None:
-
         return await super().action_quit()
     
     async def displayHistory(self):
@@ -558,7 +557,7 @@ class PyCordInterface(App):
                 if word.__contains__("#"): # Channel
                     try:
                         channelId = search("<#(.*?)>", word).group(1)
-                        msg = msg.replace(f"<#{channelId}>", f"[black on #5865F2]#{bot.get_guild(serverFocus[1]).get_channel(int(channelId)).name}[/black on #5865F2]")
+                        msg = msg.replace(f"<#{channelId}>", f"[black on {history}]#{bot.get_guild(serverFocus[1]).get_channel(int(channelId)).name}[/black on {history}]")
                     except AttributeError: pass
 
                 if word.__contains__("@&"): # Role
@@ -572,8 +571,7 @@ class PyCordInterface(App):
                     try:
                         userId = search("<@!(.*?)>", word).group(1)
                         userId = userId.replace("&", "")
-                        userColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_member(int(userId)).color.to_rgb())
-                        msg = msg.replace(f"<@!{userId}>", f"[black on {userColor}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {userColor}]")
+                        msg = msg.replace(f"<@!{userId}>", f"[black on {history}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {history}]")
                     except AttributeError: pass
 
                 if word.__contains__("@"): # User
@@ -581,8 +579,7 @@ class PyCordInterface(App):
                         userId = search("<@(.*?)>", word).group(1)
                         userId = userId.replace("&", "")
                         userId = userId.replace("!", "")
-                        userColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_member(int(userId)).color.to_rgb())
-                        msg = msg.replace(f"<@{userId}>", f"[black on {userColor}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {userColor}]")
+                        msg = msg.replace(f"<@{userId}>", f"[black on {history}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {history}]")
                     except AttributeError: pass
 
                 if word.__contains__("***"):
@@ -614,7 +611,7 @@ class PyCordInterface(App):
                     if word.__contains__("#"): # Channel
                         try:
                             channelId = search("<#(.*?)>", word).group(1)
-                            replyContent = replyContent.replace(f"<#{channelId}>", f"[black on #5865F2]#{bot.get_guild(serverFocus[1]).get_channel(int(channelId)).name}[/black on #5865F2]")
+                            replyContent = replyContent.replace(f"<#{channelId}>", f"[black on {history}]#{bot.get_guild(serverFocus[1]).get_channel(int(channelId)).name}[/black on {history}]")
                         except AttributeError: pass
 
                     if word.__contains__("@&"): # Role
@@ -628,8 +625,7 @@ class PyCordInterface(App):
                         try:
                             userId = search("<@!(.*?)>", word).group(1)
                             userId = userId.replace("&", "")
-                            userColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_member(int(userId)).color.to_rgb())
-                            replyContent = replyContent.replace(f"<@!{userId}>", f"[black on {userColor}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {userColor}]")
+                            replyContent = replyContent.replace(f"<@!{userId}>", f"[black on {history}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {history}]")
                         except AttributeError: pass
 
                     if word.__contains__("@"): # User
@@ -637,8 +633,7 @@ class PyCordInterface(App):
                             userId = search("<@(.*?)>", word).group(1)
                             userId = userId.replace("&", "")
                             userId = userId.replace("!", "")
-                            userColor = rgb_to_hex(bot.get_guild(serverFocus[1]).get_member(int(userId)).color.to_rgb())
-                            replyContent = replyContent.replace(f"<@{userId}>", f"[black on {userColor}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {userColor}]")
+                            replyContent = replyContent.replace(f"<@{userId}>", f"[black on {history}]@{bot.get_guild(serverFocus[1]).get_member(int(userId)).display_name}[/black on {history}]")
                         except AttributeError: pass
 
                     if word.__contains__("***"):
