@@ -1,5 +1,5 @@
 # PyCord
-**PyCord** is a Discord Terminal Client which uses your Discord Bot like a normal User Account!
+**PyCord** is a Discord Terminal Client which uses your Discord Bot as a normal User Account!
 
 ## ⚠️ Warning
 PyCord is a third-party client and violates Discord's Terms of Service. as stated in [this tweet](https://twitter.com/discord/status/1229357198918197248?lang=en)
