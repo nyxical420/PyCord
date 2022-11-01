@@ -1,15 +1,9 @@
 # PyCord
 **PyCord** is a Discord Terminal Client which uses your Discord Bot as a normal User Account!
 
-## ⚠️ Warning
-PyCord is a third-party client and violates Discord's Terms of Service. as stated in [this tweet](https://twitter.com/discord/status/1229357198918197248?lang=en)
-
-PyCord was made specially for my own use and for discord to stop using alot of my RAM while using it.\
-I'm not sure if this type of Discord Client is allowed, since it works by using a Discord Bot as your "User Account". *but still a third-party tho.*\
-Just to be safe, I don't recommend using PyCord as your main Discord Client since you might get banned from discord from using this.
-
-## 🗒️ Note to Windows Users
-Please Install **Windows Terminal** to use PyCord! The Textual Library that PyCord uses does not support classic Windows Terminals.
+## Damn
+PyCord is currently getting a full rewrite since the Textual library I'm using was currently updated to look better.\
+A new PyCord update may take a while since it got even harder.
 
 ## PyCord Features
 - Emoji Support (no Custom Emoji)
