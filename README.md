@@ -5,7 +5,7 @@
 ~~PyCord is currently getting a full rewrite since the Textual library I'm using was currently updated to look better.\
 A new PyCord update may take a while since it got even harder.~~
 
-I will stay to the current version of Textual PyCord uses since i don't think i need it updated yet.
+I will stay to the current version of Textual PyCord uses (`textual==0.1.18`) since i don't think i need it updated yet.
 
 ## PyCord Features
 - Emoji Support (no Custom Emoji)
