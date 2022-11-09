@@ -15,6 +15,7 @@ I will stay to the current version of Textual PyCord uses since i don't think i 
 - Reply to Users
 - Leave Servers
 - Handles an average twitter user's messages (can display long messages without breaking the interface)
+- Usable through SSH
 
 ## PyCord Setup
 :window: [Windows Setup](https://github.com/PyTsun/PyCord/blob/main/windows-setup.md)\
